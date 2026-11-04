@@ -77,3 +77,48 @@ def get_lecture_summary(lecture: int) -> str:
         available = sorted(p.stem for p in (DATA_DIR / "lectures").glob("*.md"))
         return f"第{lecture}回の要点はまだありません。用意されている回: {', '.join(available)}"
     return path.read_text(encoding="utf-8")
+
+
+LEARNING_LOG_DIR = Path(__file__).resolve().parent.parent / "learning_log"
+
+
+def make_quiz(term: str) -> str:
+    """指定した用語について、定義から4択クイズを1問作る。クイズを作りたいときに使う。"""
+    result = search_glossary(term)
+    if "見つかりませんでした" in result:
+        return result
+    try:
+        matches = json.loads(result)
+    except ValueError:
+        return result
+    if not matches:
+        return result
+    target = matches[0]
+    others = [t for t in load_glossary() if t.get("term") != target.get("term")][:3]
+    if len(others) < 3:
+        return "クイズを作るのに十分な用語がありません。"
+    choices = [target["definition"]] + [t["definition"] for t in others]
+    shift = len(target["term"]) % 4
+    choices = choices[shift:] + choices[:shift]
+    answer = "ABCD"[choices.index(target["definition"])]
+    lines = [f"問題: 「{target['term']}」とは何か。最も適切な説明を選べ。"]
+    lines += [f"{label}. {text}" for label, text in zip("ABCD", choices)]
+    lines.append(f"答え: {answer}（{target['term']}）")
+    return "\n".join(lines)
+
+
+def save_learning_log(topic: str, content: str) -> str:
+    """学習の記録を learning_log/ に Markdown ファイルとして保存する。保存する前に利用者の確認が必要。"""
+    import re
+    from datetime import date
+
+    today = date.today().isoformat()
+    safe = re.sub(r'[\\/:*?"<>|]', "", topic).strip().replace(" ", "_") or "log"
+    LEARNING_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    path = LEARNING_LOG_DIR / f"{today}_{safe}.md"
+    mode = "a" if path.exists() else "w"
+    with path.open(mode, encoding="utf-8") as f:
+        if mode == "a":
+            f.write("\n---\n\n")
+        f.write(f"# {topic}\n\n- 日付: {today}\n\n{content}\n")
+    return f"保存しました: {path}"

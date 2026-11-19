@@ -22,7 +22,7 @@ def _parts(result, kind):
 
 def test_base_tools_are_registered_and_called(monkeypatch):
     monkeypatch.setattr("app.retrieval.search", lambda *args, **kwargs: [])
-    model = TestModel(call_tools=["search_glossary", "get_lecture_summary", "search_materials"])  # save_learning_log は承認が必要なため既定の呼び出し対象から外す
+    model = TestModel(call_tools=["search_materials"])  # save_learning_log は承認が必要、search_glossary / get_lecture_summary は MCP 経由の遅延読み込みのため既定の呼び出し対象から外す
     with agent.override(model=model):
         result = agent.run_sync("LoRAとは？")
 
